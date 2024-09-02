@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ChatGPT-Style Chatbot</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #343541;
+            color: #d1d5db;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        .menu-icon {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            width: 30px;
+            height: 3px;
+            background-color: #d1d5db;
+            transition: all 0.3s ease;
+        }
+
+        .menu-icon::before, .menu-icon::after {
+            content: '';
+            position: absolute;
+            width: 30px;
+            height: 3px;
+            background-color: #d1d5db;
+            transition: all 0.3s ease;
+        }
+
+        .menu-icon::before {
+            transform: translateY(-10px);
+        }
+
+        .menu-icon::after {
+            transform: translateY(10px);
+        }
+
+        #menu-toggle:checked + .menu-icon {
+            background-color: transparent;
+        }
+
+        #menu-toggle:checked + .menu-icon::before {
+            transform: rotate(45deg) translate(5px, 5px);
+        }
+
+        #menu-toggle:checked + .menu-icon::after {
+            transform: rotate(-45deg) translate(5px, -5px);
+        }
+
+        #menu-toggle {
+            display: none;
+        }
+
+        .menu-drawer {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 250px;
+            height: 100%;
+            background-color: #1f1f2e;
+            padding-top: 60px;
+            transform: translateX(-250px);
+            transition: transform 0.3s ease;
+        }
+
+        #menu-toggle:checked ~ .menu-drawer {
+            transform: translateX(0);
+        }
+
+        .menu-drawer a {
+            display: block;
+            padding: 15px 20px;
+            color: #d1d5db;
+            text-decoration: none;
+            font-size: 1.2rem;
+            transition: background-color 0.3s ease;
+        }
+
+        .menu-drawer a:hover {
+            background-color: #10a37f;
+        }
+
+        .chat-container {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            height: 100%;
+            max-width: 800px;
+            width: 100%;
+            margin: auto;
+        }
+
+        .chat-box {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding: 20px;
+            background-color: #444654;
+            border-top: 1px solid #565869;
+        }
+
+        .chat-box p {
+            margin: 0;
+            padding: 10px;
+            border-radius: 8px;
+            background-color: #40414f;
+            max-width: 75%;
+            line-height: 1.5em;
+            word-wrap: break-word;
+        }
+
+        .chat-box .user-message {
+            background-color: #1e1e2e;
+            align-self: flex-end;
+        }
+
+        .chat-box .bot-message {
+            background-color: #444654;
+            align-self: flex-start;
+        }
+
+        .chat-input-container {
+            display: flex;
+            align-items: center;
+            padding: 10px 20px;
+            background-color: #343541;
+            border-top: 1px solid #565869;
+        }
+
+        .chat-input {
+            flex-grow: 1;
+            padding: 12px;
+            border-radius: 8px;
+            border: none;
+            background-color: #40414f;
+            color: #d1d5db;
+            font-size: 1em;
+        }
+
+        .chat-input:focus {
+            outline: none;
+            border: 1px solid #565869;
+        }
+
+        .send-button {
+            background-color: #10a37f;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 12px 20px;
+            margin-left: 10px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        .send-button:hover {
+            background-color: #0e8c6d;
+        }
+
+        @media (max-width: 768px) {
+            .chat-container {
+                max-width: 100%;
+            }
+            .chat-box p {
+                max-width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <input type="checkbox" id="menu-toggle">
+    <label class="menu-icon" for="menu-toggle"></label>
+    <div class="menu-drawer">
+        <a href="/chat">Chat</a>
+        <a href="/payments">Payments</a>
+        <a href="/about">About</a>
+    </div>
+
+    <div class="chat-container">
+        <div class="chat-box" id="chat-box">
+            <!-- Chat content goes here -->
+            {% for entry in chat_history %}
+                <p class="{{ 'user-message' if entry['role'] == 'user' else 'bot-message' }}">
+                    <strong>{{ 'You' if entry['role'] == 'user' else 'Chatbot' }}:</strong> {{ entry['content'] }}
+                </p>
+            {% endfor %}
+        </div>
+        <div class="chat-input-container">
+            <input type="text" id="chat-input" class="chat-input" placeholder="Type your message..." />
+            <button id="send-button" class="send-button">Send</button>
+        </div>
+    </div>
+
+    <script>
+        // Scroll to the bottom of the chat box
+        function scrollToBottom() {
+            var chatBox = document.getElementById('chat-box');
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        // Automatically scroll to the bottom when the page loads
+        window.onload = scrollToBottom;
+
+        // Scroll to the bottom after a new message is added
+        document.getElementById('send-button').addEventListener('click', function() {
+            var chatBox = document.getElementById('chat-box');
+            var userInput = document.getElementById('chat-input').value;
+
+            if (userInput.trim() === '') return;
+
+            // Display user message
+            var userMessage = document.createElement('p');
+            userMessage.className = 'user-message';
+            userMessage.innerHTML = `<strong>You:</strong> ${userInput}`;
+            chatBox.appendChild(userMessage);
+
+            // Clear input field
+            document.getElementById('chat-input').value = '';
+
+            // Fetch bot response
+            fetch('/chat', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `message=${userInput}`
+            })
+            .then(response => response.json())
+            .then(data => {
+                var botMessage = document.createElement('p');
+                botMessage.className = 'bot-message';
+                botMessage.innerHTML = `<strong>Chatbot:</strong> ${data.response}`;
+                chatBox.appendChild(botMessage);
+
+                // Scroll to the bottom after the bot response is added
+                scrollToBottom();
+            });
+
+            // Scroll to the bottom immediately after the user message is added
+            scrollToBottom();
+        });
+    </script>
+</body>
+</html>
